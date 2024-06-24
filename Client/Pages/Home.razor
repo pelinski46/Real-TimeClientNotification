@@ -1,7 +1,51 @@
 ﻿@page "/"
+@using Client.SignalConnections
+@using Microsoft.AspNetCore.SignalR.Client
+@inject SignalRConnection signalRConnection
+@implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="row">
+    <div class="card col-md-8">
+        <div class="card-header">
+            All People Chat|
+            <a class="btn btn-success btn-sm" @onclick="Connect">Connect</a>
+            <a class="btn btn-danger btn-sm" @onclick="Disconnect">Disconnect</a>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                @if (Messages != null)
+                {
+                    <ul>
+                        @foreach (string data in Messages)
+                        {
+                            <li>@data</li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="card-footer">@signalRConnection.ConnectionState </div>
+        </div>
+    </div>
+</div>
 
-Welcome to your new app.
+@code {
+    HubConnection? ClientHubConnection;
+    List<string> Messages = [];
+    protected override async Task OnInitializedAsync()
+    {
+        signalRConnection.ConnectionStateChanged += StateHasChanged;
+        signalRConnection.hubConnection.On<string>("AllClientsNotification", (statement) =>
+        {
+            Messages.Add(statement);
+            StateHasChanged();
+        });
+        await Connect();
+    }
+
+
+    async Task Connect() => await signalRConnection.StartConnection();
+    async Task Disconnect() => await signalRConnection.CloseConnection();
+    public void Dispose() => signalRConnection.ConnectionStateChanged -= StateHasChanged;
+}
